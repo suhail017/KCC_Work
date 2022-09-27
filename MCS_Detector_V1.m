@@ -1,3 +1,4 @@
+%Last modified: 09/27/2022
 %
 % MCS detector V1.0
 % Developed by : Suhail Mahmud
@@ -5,9 +6,9 @@
 % Project creation timeline : September 2022
 %
 % The purpose of this script is 3 folds. They are as follows:
-% 1. Download the images from the mesonet server
+% 1. Download the nexrad mosaic image from the mesonet server
 % 2. Predict whether it is a MCS day or not
-% 3. Detect a Bouning box for the MCS event and convert the bounding box to lat/lon
+% 3. Detect a Bounding box for the MCS event and convert the bounding box to lat/lon
 %
 % Running instruction: It is completely automated script which will automatically
 % download the image and do all the prediction by itself.
@@ -31,23 +32,30 @@ Day = (extractBetween(Date,7,8));
 
 Download_file = urlwrite(sprintf('https://mesonet.agron.iastate.edu/archive/data/%s/%s/%s/GIS/uscomp/max_n0r_0z0z_%s.png',Year,Month,Day,Date),sprintf('%s.jpg',Date));
 
-
+savedir_perm = '\\kcc-mdstore01\Public\SCS\ML_Derecho\Datasets\MCS_detector_results';
+savedir = mkdir(savedir_perm,Date);
+savedir = fullfile(savedir_perm,Date);
 %% Convert the file into jpg format
 
 [currentimage,cmap] = imread(sprintf('%s.jpg',Date));
 image = ind2rgb(currentimage,cmap);
-imwrite(image,sprintf('%s.jpg',Date));
+filename = fullfile(savedir,sprintf('%s.jpg',Date));
+imwrite(image,filename);
 im = imresize(image,[224 224]);
+
 
  %%  Detecting the MCS/Non-MCS day
 
 % Loading the models in the explorer
 load('MCS_models.mat')
+scores_mcs_day = cell(3);
+[YPred_vgg16,scores_mcs_day{1}]= classify(netTransfer_vgg16,im);
+[YPred_googlenet,scores_mcs_day{2}]= classify(netTransfer_googlenet,im);
+[YPred_resnet50,scores_mcs_day{3}]= classify(netTransfer_resnet50,im);
 
-[YPred_vgg16]= classify(netTransfer_vgg16,im);
-[YPred_googlenet]= classify(netTransfer_googlenet,im);
-[YPred_resnet50]= classify(netTransfer_resnet50,im);
-
+% for i =1:3
+%     max(i) = max(scores_mcs_day(i));
+% end
 
 result{1} = string(YPred_vgg16);
 result{2} = string(YPred_googlenet);
@@ -59,11 +67,11 @@ result_str = string(result);
 Derecho_prob = nnz(strcmp(result_str,"Derecho"));
 total = Derecho_prob/3;
 total = total*100;
-sprintf("The probabilty of the Derecho is %i %%",total)
+sprintf("The probabilty of this day can be a MCS event day is %.2f%%",total)
 
 %% Detecting the bounding box from the image and display it
 
-image = imread(sprintf('%s.jpg',Date));
+image = imread(filename);
 [bboxes,scores,labels] = detect(detector_yolov2,image);
 [bboxes_new,scores_new,labels_new] = detect(detector_yolov4,image);
 imshow(image)
@@ -107,7 +115,8 @@ end
 
 f = figure();
 imshow(image)
-saveas(f,sprintf('Result_%s.jpg',Date))
+filename_res = fullfile(savedir,sprintf('Result_%s.jpg',Date));
+saveas(f,filename_res)
 
 
 %% Convert the bounding box coordinate to pixel co ordinates
@@ -165,7 +174,8 @@ model = model';
 name = cell(1,length(lat_lon_mat_full));
 t = table(Date_col,[lat_list(:,1)],[lon_list(:,1)],[lat_list(:,2)],[lon_list(:,2)],...
     scores_full,model,'VariableNames',{'Date','Lat_1','Lon_1','Lat_2','Lon_2','Scores','Model'});
-writetable(t,sprintf('%s.xlsx',Date),"WriteMode","replacefile","AutoFitWidth",false)
+csv_filename = fullfile(savedir,sprintf('%s.csv',Date));
+writetable(t,csv_filename,"WriteMode","overwrite")
 
 
 disp("Congratulation! You have successfully run the MCS detector V1.0. Please look for the resulted image and the excel file in the working directory.")

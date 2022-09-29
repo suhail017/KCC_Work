@@ -1,6 +1,6 @@
-%Last modified: 09/27/2022
+% Main Version
 %
-% MCS detector V1.0
+% MCS detector V1.01
 % Developed by : Suhail Mahmud
 % Project advisor : Sara Sienkiewicz, Daniel Ward
 % Project creation timeline : September 2022
@@ -30,25 +30,40 @@ Month = (extractBetween(Date,5,6));
 Day = (extractBetween(Date,7,8));
 
 
-Download_file = urlwrite(sprintf('https://mesonet.agron.iastate.edu/archive/data/%s/%s/%s/GIS/uscomp/max_n0r_0z0z_%s.png',Year,Month,Day,Date),sprintf('%s.jpg',Date));
-
 savedir_perm = '\\kcc-mdstore01\Public\SCS\ML_Derecho\Datasets\MCS_detector_results';
+
+%savedir_perm  =pwd;
+
 savedir = mkdir(savedir_perm,Date);
+
 savedir = fullfile(savedir_perm,Date);
+
+
+filename = fullfile(savedir,sprintf('%s.png',Date));
+
+filename_2 = fullfile(savedir,sprintf('%s.wld',Date));
+
+Download_file = urlwrite(sprintf('https://mesonet.agron.iastate.edu/archive/data/%s/%s/%s/GIS/uscomp/max_n0r_0z0z_%s.png',Year,Month,Day,Date),filename);
+
+Download_file_2 = urlwrite(sprintf('https://mesonet.agron.iastate.edu/archive/data/%s/%s/%s/GIS/uscomp/max_n0r_0z0z_%s.wld',Year,Month,Day,Date),filename_2);
+
+
 %% Convert the file into jpg format
 
-[currentimage,cmap] = imread(sprintf('%s.jpg',Date));
+[currentimage,cmap] = imread(filename);
 image = ind2rgb(currentimage,cmap);
-filename = fullfile(savedir,sprintf('%s.jpg',Date));
-imwrite(image,filename);
 im = imresize(image,[224 224]);
 
 
  %%  Detecting the MCS/Non-MCS day
 
 % Loading the models in the explorer
+
 load('MCS_models.mat')
-scores_mcs_day = cell(3);
+addpath 'C:\Users\smahmud\Desktop\MCS Dataset\export_fig'
+
+
+scores_mcs_day = cell(3,1);
 [YPred_vgg16,scores_mcs_day{1}]= classify(netTransfer_vgg16,im);
 [YPred_googlenet,scores_mcs_day{2}]= classify(netTransfer_googlenet,im);
 [YPred_resnet50,scores_mcs_day{3}]= classify(netTransfer_resnet50,im);
@@ -60,8 +75,9 @@ scores_mcs_day = cell(3);
 result{1} = string(YPred_vgg16);
 result{2} = string(YPred_googlenet);
 result{3} = string(YPred_resnet50);
+scores_mcs_day_mat = cell2mat(scores_mcs_day);
 
-sprintf('Result from VGG16 model is %s,\nResult from the Resnet model is %s\nResult from the Google net model is %s',result{1},result{2},result{3})
+sprintf('Result from VGG16 model is %f %% %s,\nResult from the Googlenet model is %f %% %s\nResult from the Resnet net model is %f %% %s',scores_mcs_day_mat(1,1)*100,result{1},scores_mcs_day_mat(2,1)*100,result{2},scores_mcs_day_mat(3,1)*100,result{3})
 
 result_str = string(result);
 Derecho_prob = nnz(strcmp(result_str,"Derecho"));
@@ -69,9 +85,21 @@ total = Derecho_prob/3;
 total = total*100;
 sprintf("The probabilty of this day can be a MCS event day is %.2f%%",total)
 
+txt_file_pos = fullfile(savedir,'MCS_ID_Positive.txt');
+txt_file_neg = fullfile(savedir,'MCS_ID_Negetive.txt');
+
+if total>=66.6667
+    fileID = fopen(txt_file_pos,'w');
+    fprintf(fileID,'Result from VGG16 model is %f %% %s,\nResult from the Googlenet model is %f %% %s\nResult from the Resnet net model is %f %% %s',scores_mcs_day_mat(1,1)*100,result{1},scores_mcs_day_mat(2,1)*100,result{2},scores_mcs_day_mat(3,1)*100,result{3});
+    fclose(fileID);
+else
+    fclose(fopen(txt_file_neg,'w'));
+end
+
+
 %% Detecting the bounding box from the image and display it
 
-image = imread(filename);
+%image = imread(filename);
 [bboxes,scores,labels] = detect(detector_yolov2,image);
 [bboxes_new,scores_new,labels_new] = detect(detector_yolov4,image);
 imshow(image)
@@ -115,8 +143,8 @@ end
 
 f = figure();
 imshow(image)
-filename_res = fullfile(savedir,sprintf('Result_%s.jpg',Date));
-saveas(f,filename_res)
+filename_res = fullfile(savedir,sprintf('Result_%s.png',Date));
+export_fig(sprintf('%s',filename_res),'-native')
 
 
 %% Convert the bounding box coordinate to pixel co ordinates

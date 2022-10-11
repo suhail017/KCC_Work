@@ -50,8 +50,11 @@ Download_file_2 = urlwrite(sprintf('https://mesonet.agron.iastate.edu/archive/da
 
 %% Convert the file into jpg format
 
+
 [currentimage,cmap] = imread(filename);
 image = ind2rgb(currentimage,cmap);
+imwrite(image,sprintf('%s.jpg',Date));
+image = imread(sprintf('%s.jpg',Date));
 im = imresize(image,[224 224]);
 
 
@@ -68,9 +71,6 @@ scores_mcs_day = cell(3,1);
 [YPred_googlenet,scores_mcs_day{2}]= classify(netTransfer_googlenet,im);
 [YPred_resnet50,scores_mcs_day{3}]= classify(netTransfer_resnet50,im);
 
-% for i =1:3
-%     max(i) = max(scores_mcs_day(i));
-% end
 
 result{1} = string(YPred_vgg16);
 result{2} = string(YPred_googlenet);
@@ -88,12 +88,14 @@ sprintf("The probabilty of this day can be a MCS event day is %.2f%%",total)
 txt_file_pos = fullfile(savedir,'MCS_ID_Positive.txt');
 txt_file_neg = fullfile(savedir,'MCS_ID_Negetive.txt');
 
-if total>=66.6667
+if total>=50
     fileID = fopen(txt_file_pos,'w');
     fprintf(fileID,'Result from VGG16 model is %f %% %s,\nResult from the Googlenet model is %f %% %s\nResult from the Resnet net model is %f %% %s',scores_mcs_day_mat(1,1)*100,result{1},scores_mcs_day_mat(2,1)*100,result{2},scores_mcs_day_mat(3,1)*100,result{3});
     fclose(fileID);
 else
-    fclose(fopen(txt_file_neg,'w'));
+    fileID = fopen(txt_file_neg,'w');
+    fprintf(fileID,'Result from VGG16 model is %f %% %s,\nResult from the Googlenet model is %f %% %s\nResult from the Resnet net model is %f %% %s',scores_mcs_day_mat(1,1)*100,result{1},scores_mcs_day_mat(2,1)*100,result{2},scores_mcs_day_mat(3,1)*100,result{3});
+    fclose(fileID);
 end
 
 

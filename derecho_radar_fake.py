@@ -15,6 +15,5 @@ overlay = cv2.cvtColor(overlay, cv2.COLOR_BGR2RGB)
 added_image = cv2.addWeighted(background, 0.4, overlay, 0.9, 0)
 plt.axis('off')
 plt.imshow(added_image)
-plt.savefig('pict.png', bbox_inches='tight', pad_inches=0)
+plt.savefig('pict.png', bbox_inches='tight', pad_inches=0,dpi=600)
 
-# plt.savefig(rf'{dir}/validate_{Date}.jpg')

@@ -34,7 +34,7 @@ import os
 import PIL
 import glob
 input_path = r'C:\Users\smahmud\Desktop\MCS Dataset\images\jpg\NonDerecho'
-#output_path = r'C:\Users\smahmud\Desktop\MCS Dataset\images\resize_NonDerecho'
+
 images = [file for file in os.listdir(input_path) if file.endswith(('jpeg', 'png', 'jpg'))]
 
 for image in images:
